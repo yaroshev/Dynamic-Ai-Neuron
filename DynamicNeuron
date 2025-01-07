@@ -1,0 +1,78 @@
+import numpy as np
+
+class DynamicNeuron:
+    def __init__(self, num_inputs):
+        """
+        Initialize the neuron with:
+        - Random weights (representing synaptic strengths).
+        - Bias term for threshold adjustment.
+        - A dynamic firing threshold based on activity.
+        - A mechanism for activity tracking and adaptation.
+        """
+        self.weights = np.random.randn(num_inputs) * 0.1  # Small initial weights for stability
+        self.bias = np.random.randn() * 0.1  # Small bias for early activity
+        self.threshold = np.random.uniform(0.5, 1.0)  # Dynamic firing threshold
+        self.activity_history = []  # Tracks recent firing activity
+        self.max_history_length = 20  # Maximum activity log length for efficiency
+
+    def activate(self, inputs):
+        """
+        Compute the output of the neuron based on the inputs.
+        - Calculate the weighted sum of inputs and add bias.
+        - Check if the output exceeds the threshold to fire.
+        """
+        z = np.dot(self.weights, inputs) + self.bias  # Weighted sum + bias
+        if z >= self.threshold:  # Neuron fires
+            self.activity_history.append(1)
+            self._adapt(True)  # Update parameters based on firing
+            return 1  # Firing output
+        else:
+            self.activity_history.append(0)
+            self._adapt(False)  # Update parameters without firing
+            return 0  # No firing
+
+    def _adapt(self, fired):
+        """
+        Adapt the neuron based on its activity:
+        - Adjust the threshold to balance firing frequency.
+        - Modify weights slightly to simulate synaptic plasticity.
+        - Maintain sparsity by pruning weak connections.
+        """
+        if len(self.activity_history) > self.max_history_length:
+            self.activity_history.pop(0)  # Keep history within limits
+
+        firing_rate = sum(self.activity_history) / len(self.activity_history)
+
+        # Dynamic threshold adjustment
+        if firing_rate > 0.7:  # Too active
+            self.threshold += 0.05  # Make it harder to fire
+        elif firing_rate < 0.3:  # Too inactive
+            self.threshold = max(0.5, self.threshold - 0.05)  # Make it easier to fire
+
+        # Synaptic plasticity: Slight random changes to weights
+        if fired:
+            self.weights += np.random.normal(0, 0.01, size=self.weights.shape)  # Strengthen connections
+
+        # Prune weak connections for sparsity
+        self.weights[np.abs(self.weights) < 0.05] = 0
+
+    def prune_connections(self):
+        """
+        Additional method to enforce sparsity explicitly.
+        Removes connections with very low weights.
+        """
+        self.weights[np.abs(self.weights) < 0.1] = 0
+
+# Example usage
+def main():
+    num_inputs = 10  # Number of inputs for the neuron
+    dynamic_neuron = DynamicNeuron(num_inputs)
+
+    for step in range(50):  # Simulate 50 steps of inputs
+        inputs = np.random.randn(num_inputs)  # Random input vector
+        output = dynamic_neuron.activate(inputs)  # Compute neuron activation
+        print(f"Step {step + 1}: Output: {output}, Threshold: {dynamic_neuron.threshold:.2f}, Weights: {dynamic_neuron.weights}")
+
+if __name__ == "__main__":
+    main()
+
